@@ -11,6 +11,6 @@ COPY . .
 
 RUN node --max-old-space-size=2048 /usr/local/bin/npm run build 
 
-EXPOSE 80/tcp 
+EXPOSE 80/tcp
 
 CMD node deploy.js

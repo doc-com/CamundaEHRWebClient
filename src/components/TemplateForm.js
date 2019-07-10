@@ -10,8 +10,8 @@ const client = new Client(config)
 class TemplateForm extends Component {
 
     state = {
-        token: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImFkbWluIiwiZXh0cmFkYXRhIjp7Im9yZ2FuaXphdGlvbiI6IjEyMzQ1NiIsIm9yZ191aWQiOiJlOWQxMzI5NC1iY2U3LTQ0ZTctOTYzNS04ZTkwNmRhMGM5MTQifSwiaXNzdWVkX2F0IjoiMjAxOS0wNy0wOVQyMDoxOToyNS42NDdaIn0=.ASjtM4SYDhc+P+mUzuLg92J8i/OppIrzC1fbSQg/vjQ=',
-        templateId: '56b759fc-314f-4104-9db6-914ff78260ab',
+        token: '',
+        templateId: '',
         isLoading: false,
         html: '',
         task: '',
@@ -34,22 +34,18 @@ class TemplateForm extends Component {
         })
     }
 
-    changeHandler = (e) => {
+    changeHandler = e => {
         const { value, name } = e.target
         this.setState({
             [name]: value
         })
     }
 
-    submitHandler = e => {
-        console.log(this.state.isLoading)
+    handlerSubmit = e => {
+        e.preventDefault()
         this.setState({
             isLoading: true
         })
-        console.log(this.state.isLoading)
-        console.log(this.state.token)
-        console.log(this.state.templateId)
-        e.preventDefault()
         const body = {
             "variables": {
                 "token": {
@@ -60,18 +56,6 @@ class TemplateForm extends Component {
                     "value": this.state.templateId,
                     "type": "String"
                 }
-                // "templateFetchUrl": {
-                //     "value": "http://3.89.210.6:8090/ehr/api/v1/templates/ad00f011-f43a-4098-868b-ceb4ee8fc770",
-                //     "type": "String"
-                // },
-                // "xmlToHtmlUrl": {
-                //     "value": "http://3.95.7.24:36527/opt2bundle/ad00f011-f43a-4098-868b-ceb4ee8fc770",
-                //     "type": "String"
-                // },
-                // "storeContributionUrl": {
-                //     "value": "https://samples.openweathermap.org/data/2.5/weather?q=London,uk&appid=b6907d289e10d714a6e88b30761fae22",
-                //     "type": "String"
-                // }
             }
         }
         axios.post('http://54.84.23.201:8080/engine-rest/process-definition/key/consultation/start', body)
@@ -80,55 +64,42 @@ class TemplateForm extends Component {
             })
             .catch(error => {
                 console.log(error)
+                this.setState({
+                    isLoading: false
+                })
             })
     }
 
-    handleSubmit(event) {
-        event.preventDefault()
-        const form = event.target
+    submitForm(e) {
+        e.preventDefault()
+        const form = e.target
         const data = new FormData(form)
         let results = {}
         for (let name of data.keys()) {
             if (document.getElementsByName(name)[0].type === "file") {
-                console.log("Hola a todos")
-
-                document.getElementsByName(name)[0].addEventListener('change', dat.handleFileSelect(), false)
-
-                // var f = document.getElementsByName(name)
-                // var fileName = f.data.fileName
-
-                // results[name] = document.getElementsByName(name)[0].value
-                // var canvas = document.createElement('CANVAS')
-                // var img = document.createElement('img')
-                // img.src = document.getElementsByName(name)[0].value
-                // img.onload = function() {
-                //     canvas.height = img.height
-                //     canvas.width = img.width
-                //     var dataURL = canvas.toDataURL('image/png')
-                //     alert(dataURL)
-                //     canvas = null
-                // }
+                var filesSelected = document.getElementsByName(name)[0].files
+                if (filesSelected.length > 0) {
+                    var fileToLoad = filesSelected[0]
+                    var fileReader = new FileReader()
+                    fileReader.onload = function (fileLoadedEvent) {
+                        var srcData = fileLoadedEvent.target.result.replace("data:image/png;base64,", "")
+                        results[name] = srcData
+                    }
+                    fileReader.readAsDataURL(fileToLoad)
+                } else {
+                    results[name] = ""
+                }
             } else {
                 results[name] = document.getElementsByName(name)[0].value
             }
         }
-        // dat.completeTask(results)
-    }
 
-    handleFileSelect(event) {
-        const reader = new FileReader()
-        reader.onload = dat.handleFileLoad()
-        reader.readAsText(event.target.files[0])
+        if (window.confirm("Estas seguro de enviar el formulario?")) {
+            dat.completeTask(results)
+        }
     }
-
-    handleFileLoad(event) {
-        console.log(event);
-        document.getElementById('fileContent').textContent = event.target.result;
-    }
-
 
     async completeTask(data) {
-        console.log(JSON.stringify(data))
         const processVariables = new Variables()
         processVariables.setTyped("answers", {
             value: JSON.stringify(data),
@@ -138,15 +109,26 @@ class TemplateForm extends Component {
             }
         })
         await dat.state.taskService.complete(dat.state.task, processVariables)
+        dat.cleanData()
+    }
+
+    cleanData() {
+        dat.setState({
+            token: '',
+            templateId: '',
+            isLoading: false,
+            html: '',
+            task: '',
+            taskService: ''
+        })
     }
 
     render() {
         const { token, templateId, isLoading, html } = this.state
-        console.log("Esta cargando: ", isLoading)
         return (
             <>
                 {this.state.html !== '' ? (
-                    <form onSubmit={this.handleSubmit}>
+                    <form onSubmit={this.submitForm}>
                         <SanitizedHTML
                             allowedTags={false}
                             allowedAttributes={false}
@@ -155,7 +137,7 @@ class TemplateForm extends Component {
                     </form>
                 ) : (
                         <div className="card">
-                            <form onSubmit={this.submitHandler} className="card-body">
+                            <form onSubmit={this.handlerSubmit} className="card-body">
                                 <div className="form-group">
                                     <input
                                         type="text"
