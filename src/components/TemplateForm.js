@@ -34,14 +34,14 @@ class TemplateForm extends Component {
         })
     }
 
-    changeHandler = e => {
+    handleChange = e => {
         const { value, name } = e.target
         this.setState({
             [name]: value
         })
     }
 
-    handlerSubmit = e => {
+    handleSubmit = e => {
         e.preventDefault()
         this.setState({
             isLoading: true
@@ -75,9 +75,11 @@ class TemplateForm extends Component {
         const form = e.target
         const data = new FormData(form)
         let results = {}
+
         for (let name of data.keys()) {
-            if (document.getElementsByName(name)[0].type === "file") {
-                var filesSelected = document.getElementsByName(name)[0].files
+            var selection = document.getElementsByName(name)[0]
+            if (selection.type === "file") {
+                var filesSelected = selection.files
                 if (filesSelected.length > 0) {
                     var fileToLoad = filesSelected[0]
                     var fileReader = new FileReader()
@@ -89,8 +91,12 @@ class TemplateForm extends Component {
                 } else {
                     results[name] = ""
                 }
+            } else if (selection.className === "DV_CODED_TEXT form-control") {
+                let value = selection.value
+                let textValue = selection.options[selection.selectedIndex].innerText
+                results[name] = { "code": value, "textValue": textValue }
             } else {
-                results[name] = document.getElementsByName(name)[0].value
+                results[name] = selection.value
             }
         }
 
@@ -98,6 +104,7 @@ class TemplateForm extends Component {
             dat.completeTask(results)
         }
     }
+
 
     async completeTask(data) {
         const processVariables = new Variables()
@@ -137,14 +144,14 @@ class TemplateForm extends Component {
                     </form>
                 ) : (
                         <div className="card">
-                            <form onSubmit={this.handlerSubmit} className="card-body">
+                            <form onSubmit={this.handleSubmit} className="card-body">
                                 <div className="form-group">
                                     <input
                                         type="text"
                                         name="token"
                                         className="form-control"
                                         value={token}
-                                        onChange={this.changeHandler}
+                                        onChange={this.handleChange}
                                         placeholder="Auth Token"
                                     />
                                 </div>
@@ -154,7 +161,7 @@ class TemplateForm extends Component {
                                         name="templateId"
                                         className="form-control"
                                         value={templateId}
-                                        onChange={this.changeHandler}
+                                        onChange={this.handleChange}
                                         placeholder="Template Id"
                                     />
                                 </div>
