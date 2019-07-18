@@ -78,6 +78,9 @@ class TemplateForm extends Component {
 
         for (let name of data.keys()) {
             var selection = document.getElementsByName(name)[0]
+            let selectionClassName = selection.className.split(" ")
+            let selectionFilter = selectionClassName.filter(name => name.includes("DV"))
+
             if (selection.type === "file") {
                 var filesSelected = selection.files
                 if (filesSelected.length > 0) {
@@ -85,26 +88,24 @@ class TemplateForm extends Component {
                     var fileReader = new FileReader()
                     fileReader.onload = function (fileLoadedEvent) {
                         var srcData = fileLoadedEvent.target.result.replace("data:image/png;base64,", "")
-                        results[name] = srcData
+                        results[name] = { "type": selectionFilter, "value": srcData }
                     }
                     fileReader.readAsDataURL(fileToLoad)
                 } else {
-                    results[name] = ""
+                    results[name] = { "type": selectionFilter, "value": "" }
                 }
             } else if (selection.className === "DV_CODED_TEXT form-control") {
                 let value = selection.value
                 let textValue = selection.options[selection.selectedIndex].innerText
-                results[name] = { "code": value, "textValue": textValue }
+                results[name] = { "type": selectionFilter, "value": {"code": value, "textValue": textValue }}
             } else {
-                results[name] = selection.value
+                results[name] = { "type": selectionFilter, "value": selection.value }
             }
         }
-
         if (window.confirm("Estas seguro de enviar el formulario?")) {
             dat.completeTask(results)
         }
     }
-
 
     async completeTask(data) {
         const processVariables = new Variables()
