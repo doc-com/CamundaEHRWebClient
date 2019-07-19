@@ -128,7 +128,6 @@ class TemplateForm extends Component {
             "composition_setting_code": "COMPOSITION SETTING CODE"
         }
         let value = { meta, data: results }
-        console.log(JSON.stringify(value))
         const processVariables = new Variables()
         processVariables.setTyped("answers", {
             value: JSON.stringify(value),
