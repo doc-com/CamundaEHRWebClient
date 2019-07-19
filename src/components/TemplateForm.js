@@ -1,6 +1,7 @@
 import React, { Component } from 'react'
 import axios from 'axios'
 import SanitizedHTML from 'react-sanitized-html'
+import each from 'async/each';
 
 let dat
 const { Client, logger, Variables } = require('camunda-external-task-client-js')
@@ -76,47 +77,67 @@ class TemplateForm extends Component {
         const data = new FormData(form)
         let results = {}
 
-        for (let name of data.keys()) {
+        each(data.keys(), (name, next) => {
             var selection = document.getElementsByName(name)[0]
             let selectionClassName = selection.className.split(" ")
-            let selectionFilter = selectionClassName.filter(name => name.includes("DV"))
-
-            if (selection.type === "file") {
-                var filesSelected = selection.files
-                if (filesSelected.length > 0) {
-                    var fileToLoad = filesSelected[0]
-                    var fileReader = new FileReader()
-                    fileReader.onload = function (fileLoadedEvent) {
-                        var srcData = fileLoadedEvent.target.result.replace("data:image/png;base64,", "")
-                        results[name] = { "type": selectionFilter, "value": srcData }
+            let selectionFilter = selectionClassName.filter(name => name.includes("DV")).toString()
+            if (selection.className === "DV_MULTIMEDIA") {
+                let fileSelected = selection.files
+                if (fileSelected.length > 0) {
+                    let file = fileSelected[0]
+                    let fileReader = new FileReader()
+                    fileReader.onload = function () {
+                        results[name] = {
+                            type: selectionFilter,
+                            value: {
+                                data: fileReader.result.replace("data:image/png;base64,", ""),
+                                type: file.type,
+                                size: file.size
+                            }
+                        }
+                        next()
                     }
-                    fileReader.readAsDataURL(fileToLoad)
+                    fileReader.readAsDataURL(file);
                 } else {
                     results[name] = { "type": selectionFilter, "value": "" }
+                    next()
                 }
             } else if (selection.className === "DV_CODED_TEXT form-control") {
                 let value = selection.value
                 let textValue = selection.options[selection.selectedIndex].innerText
-                results[name] = { "type": selectionFilter, "value": {"code": value, "textValue": textValue }}
+                results[name] = { "type": selectionFilter, "value": { "code": value, "textValue": textValue } }
+                next()
             } else {
                 results[name] = { "type": selectionFilter, "value": selection.value }
+                next()
             }
-        }
-        if (window.confirm("Estas seguro de enviar el formulario?")) {
-            dat.completeTask(results)
-        }
+        }, (err) => {
+            if (window.confirm("Estas seguro de enviar el formulario?")) {
+                dat.completeTask(results)
+            }
+        })
     }
 
-    async completeTask(data) {
+    completeTask(results) {
+        const meta = {
+            "system_id": "DOC.COM",
+            "committer_name": "Dr. Vergas",
+            "composer_id": "c8915ebf-0bee-4980-a7d7-5f204c4e1f01",
+            "composer_name": "DOC COMPOSER",
+            "composition_setting_value": "COMPOSITION SETTING VALUE",
+            "composition_setting_code": "COMPOSITION SETTING CODE"
+        }
+        let value = { meta, data: results }
+        console.log(JSON.stringify(value))
         const processVariables = new Variables()
         processVariables.setTyped("answers", {
-            value: JSON.stringify(data),
+            value: JSON.stringify(value),
             type: "Json",
             valueInfo: {
                 transient: true
             }
         })
-        await dat.state.taskService.complete(dat.state.task, processVariables)
+        dat.state.taskService.complete(dat.state.task, processVariables)
         dat.cleanData()
     }
 
