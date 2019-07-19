@@ -1,7 +1,7 @@
 import React, { Component } from 'react'
 import axios from 'axios'
 import SanitizedHTML from 'react-sanitized-html'
-import each from 'async/each';
+import eachLimit from 'async/eachLimit';
 
 let dat
 const { Client, logger, Variables } = require('camunda-external-task-client-js')
@@ -75,10 +75,11 @@ class TemplateForm extends Component {
         e.preventDefault()
         const form = e.target
         const data = new FormData(form)
-        let results = {}
-
-        each(data.keys(), (name, next) => {
+        let results = [];
+        eachLimit(data.entries(), 1, (element, next) => {
+            let name = element[0];
             var selection = document.getElementsByName(name)[0]
+            selection.name = selection.name + "extra";
             let selectionClassName = selection.className.split(" ")
             let selectionFilter = selectionClassName.filter(name => name.includes("DV")).toString()
             if (selection.className === "DV_MULTIMEDIA") {
@@ -87,28 +88,29 @@ class TemplateForm extends Component {
                     let file = fileSelected[0]
                     let fileReader = new FileReader()
                     fileReader.onload = function () {
-                        results[name] = {
+                        results.push({
+                            path: name,
                             type: selectionFilter,
                             value: {
                                 data: fileReader.result.replace("data:image/png;base64,", ""),
                                 type: file.type,
                                 size: file.size
                             }
-                        }
+                        });
                         next()
                     }
                     fileReader.readAsDataURL(file);
                 } else {
-                    results[name] = { "type": selectionFilter, "value": "" }
+                    results.push({ path: name, "type": selectionFilter, "value": "" });
                     next()
                 }
             } else if (selection.className === "DV_CODED_TEXT form-control") {
-                let value = selection.value
+                let value = element[1]
                 let textValue = selection.options[selection.selectedIndex].innerText
-                results[name] = { "type": selectionFilter, "value": { "code": value, "textValue": textValue } }
+                results.push({ path: name, "type": selectionFilter, "value": { "code": value, "textValue": textValue } });
                 next()
             } else {
-                results[name] = { "type": selectionFilter, "value": selection.value }
+                results.push({ path: name, "type": selectionFilter, "value": element[1] });
                 next()
             }
         }, (err) => {
